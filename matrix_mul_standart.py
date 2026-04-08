@@ -1,6 +1,5 @@
 import numpy as np
 import time
-import sys
 import os
 import matplotlib.pyplot as plt
 
@@ -95,11 +94,9 @@ def main():
         print(f"ТЕСТ {i}/{len(matrix_sizes)}: Размер матрицы {size}x{size}")
         print(f"{'=' * 60}")
 
-        # Генерация матриц
         print(f"  Генерация матриц...")
         A, B = generate_matrices(size)
 
-        # Сохранение матриц
         print(f"  Сохранение матриц в файлы...")
         save_matrix(files['A'], A)
         save_matrix(files['B'], B)
@@ -129,7 +126,6 @@ def main():
             if os.path.exists(file):
                 os.remove(file)
 
-    # Вывод итоговой таблицы
     print("\n" + "=" * 60)
     print("ИТОГОВЫЕ РЕЗУЛЬТАТЫ")
     print("=" * 60)
@@ -138,7 +134,6 @@ def main():
     for size, t in zip(verified_sizes, times):
         print(f"{size:<10} {t:<15.3f} {size * size:<15,}")
 
-    # Построение графика
     if times:
         print("\n  Построение графика...")
         plot_results(verified_sizes, times)
