@@ -2,6 +2,7 @@ import numpy as np
 import time
 import sys
 import os
+import matplotlib.pyplot as plt
 
 
 def generate_matrices(size, min_val=-10, max_val=10):
@@ -44,78 +45,106 @@ def verify_result(c_matrix_file, expected_C):
         print(f"Допуск: {tolerance}")
 
         if is_correct:
-            print("✅ Верификация пройдена: результаты совпадают!")
+            print("  ✅ Верификация пройдена!")
         else:
-            print("❌ Верификация не пройдена: результаты отличаются!")
-
-            # Вывод примеров различий
-            diff_indices = np.where(np.abs(C_cpp - expected_C) > tolerance)
-            print(f"\nНайдено {len(diff_indices[0])} значительных различий:")
-            for i in range(min(5, len(diff_indices[0]))):
-                idx = diff_indices[0][i], diff_indices[1][i]
-                print(
-                    f"  Позиция {idx}: C++={C_cpp[idx]:.6f}, Python={expected_C[idx]:.6f}, разница={abs(C_cpp[idx] - expected_C[idx]):.6f}")
+            print("  ❌ Верификация не пройдена!")
 
         return is_correct
 
     except Exception as e:
-        print(f"❌ Ошибка при верификации: {e}")
+        print(f"  ❌ Ошибка при верификации: {e}")
         return False
+
+
+def plot_results(sizes, times):
+    """Построение графика времени выполнения"""
+    plt.figure(figsize=(10, 6))
+    plt.plot(sizes, times, 'b-o', linewidth=2, markersize=8)
+    plt.xlabel('Размер матрицы (N x N)', fontsize=12)
+    plt.ylabel('Время выполнения (сек)', fontsize=12)
+    plt.title('Зависимость времени умножения матриц от размера', fontsize=14)
+    plt.grid(True, alpha=0.3)
+
+    # Добавляем значения на график
+    for i, (size, t) in enumerate(zip(sizes, times)):
+        plt.annotate(f'{t:.3f}с', (size, t), textcoords="offset points",
+                     xytext=(0, 10), ha='center', fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig('matrix_multiplication_time.png', dpi=150)
+    plt.show()
 
 
 def main():
     print("=" * 60)
-    print("ГЕНЕРАЦИЯ ДАННЫХ И ВЕРИФИКАЦИЯ УМНОЖЕНИЯ МАТРИЦ")
+    print("ГЕНЕРАЦИЯ ДАННЫХ И ТЕСТИРОВАНИЕ УМНОЖЕНИЯ МАТРИЦ")
     print("=" * 60)
 
-    # Параметры
-    matrix_size = 200  # Размер матрицы
+    matrix_sizes = [200, 400, 600, 800, 1000, 1500, 2000, 2500, 3000]
     files = {
         'A': 'matrix_a.txt',
         'B': 'matrix_b.txt',
         'C': 'matrix_c.txt'
     }
 
-    print(f"\n1. Генерация матриц размером {matrix_size}x{matrix_size}...")
-    A, B = generate_matrices(matrix_size)
+    times = []
+    verified_sizes = []
 
-    print("\n2. Сохранение матриц в файлы...")
-    save_matrix(files['A'], A)
-    save_matrix(files['B'], B)
-    print(f"   ✓ Матрица A сохранена в {files['A']}")
-    print(f"   ✓ Матрица B сохранена в {files['B']}")
+    for i, size in enumerate(matrix_sizes, 1):
+        print(f"\n{'=' * 60}")
+        print(f"ТЕСТ {i}/{len(matrix_sizes)}: Размер матрицы {size}x{size}")
+        print(f"{'=' * 60}")
 
-    expected_C = np.matmul(A, B)
+        # Генерация матриц
+        print(f"  Генерация матриц...")
+        A, B = generate_matrices(size)
 
-    print("\n4. Запуск C++ программы...")
-    print("   Выполняется умножение матриц...")
+        # Сохранение матриц
+        print(f"  Сохранение матриц в файлы...")
+        save_matrix(files['A'], A)
+        save_matrix(files['B'], B)
 
-    cmd = f"matrix_mul.exe -a {files['A']} -b {files['B']} -o {files['C']}"
 
-    start_time = time.time()
-    result = os.system(cmd)
-    cpp_time = time.time() - start_time
+        expected_C = np.matmul(A, B)
 
-    if result != 0:
-        print("❌ Ошибка при выполнении C++ программы!")
-        return
 
-    print(f"\n5. Верификация результата...")
+        cmd = f"matrix_mul.exe -a {files['A']} -b {files['B']} -o {files['C']}"
 
-    # Проверка существования файла результата
-    if not os.path.exists(files['C']):
-        print(f"❌ Файл результата {files['C']} не найден!")
-        return
+        start_time = time.time()
+        result = os.system(cmd)
+        cpp_time = time.time() - start_time
 
-    # Верификация
-    verification_result = verify_result(files['C'], expected_C)
+        if result != 0:
+            print(f"  ❌ Ошибка при выполнении C++ программы!")
+            continue
 
+        times.append(cpp_time)
+        verified_sizes.append(size)
+
+        print(f"  ⏱️  Время выполнения C++: {cpp_time:.3f} сек")
+
+        verify_result(files['C'], expected_C)
+
+        for file in files.values():
+            if os.path.exists(file):
+                os.remove(file)
+
+    # Вывод итоговой таблицы
     print("\n" + "=" * 60)
-    print("СРАВНЕНИЕ ПРОИЗВОДИТЕЛЬНОСТИ")
+    print("ИТОГОВЫЕ РЕЗУЛЬТАТЫ")
     print("=" * 60)
-    print(f"Размер матриц: {matrix_size}x{matrix_size}")
-    print(f"\nВремя выполнения:")
-    print(f"  C++ программа:   {cpp_time:.3f} сек")
+    print(f"{'Размер':<10} {'Время (сек)':<15} {'Элементов':<15}")
+    print("-" * 40)
+    for size, t in zip(verified_sizes, times):
+        print(f"{size:<10} {t:<15.3f} {size * size:<15,}")
+
+    # Построение графика
+    if times:
+        print("\n  Построение графика...")
+        plot_results(verified_sizes, times)
+        print("  ✓ График сохранен как 'matrix_multiplication_time.png'")
+    else:
+        print("\n  ❌ Нет данных для построения графика")
 
 
 if __name__ == "__main__":
