@@ -18,6 +18,6 @@ Parallel_Proggraming
 | 2500  | 488225  |
 | 3000  | 835734  |
 Визуализация данных таблицы:
-![Компьютер]matrix_multiplication_time.png)
+![Alt-текст](matrix_multiplication_time.png)
 # Вывод
 Последовательная программа работает неприемлемо долго.
