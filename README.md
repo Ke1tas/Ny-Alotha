@@ -17,6 +17,7 @@ Parallel_Proggraming
 | 2000  | 298127  |
 | 2500  | 488225  |
 | 3000  | 835734  |
+
 Визуализация данных таблицы:
 ![Alt-текст](matrix_multiplication_time.png)
 # Вывод
