@@ -31,11 +31,12 @@ def verify_result(c_matrix_file, expected_C):
         return False
 
 
-def run_test(size, num_threads, executable="matrix_mul_omp.exe"):
+def run_test(size, num_threads, executable="matrix_mul_mpi.exe"):
     files = {
         'A': f'matrix_a_{size}.txt',
         'B': f'matrix_b_{size}.txt',
-        'C': f'matrix_c_{size}_t{num_threads}.txt'
+        'C': f'matrix_c_{size}_t{num_threads}.txt',
+        'T': f'matrix_c_{size}_t{num_threads}.txt.time'  # Path to the time file
     }
 
     try:
@@ -45,27 +46,39 @@ def run_test(size, num_threads, executable="matrix_mul_omp.exe"):
 
         expected_C = np.matmul(A, B)
 
-        cmd = [executable, "-a", files['A'], "-b", files['B'], "-o", files['C'], "-t", str(num_threads)]
+        mpiexec_path = r"C:\Program Files\Microsoft MPI\Bin\mpiexec.exe"
+        cmd = [mpiexec_path, "-n", str(num_threads), executable, "-a", files['A'], "-b", files['B'], "-o", files['C']]
 
-        start_time = time.time()
         result = subprocess.run(cmd, capture_output=True, text=True)
-        elapsed_time = time.time() - start_time
 
         if result.returncode != 0:
+            print(f"Error running MPI: {result.stderr}")
+            return None
+
+        elapsed_time = None
+        if os.path.exists(files['T']):
+            with open(files['T'], 'r') as f:
+                elapsed_time = float(f.read().strip())
+        else:
+            print(f"Time file {files['T']} not found!")
             return None
 
         is_valid = verify_result(files['C'], expected_C)
 
-        for file in files.values():
-            if os.path.exists(file):
-                os.remove(file)
+        # Cleanup
+        for f_path in files.values():
+            if os.path.exists(f_path):
+                os.remove(f_path)
 
         if is_valid:
-            print(f'size: {size}, threads {num_threads} is valid \nelapsed time {elapsed_time}')
+            print(f'Size: {size}, Threads: {num_threads} -> Valid. Internal Time: {elapsed_time:.4f}s')
             return elapsed_time
+
+        print(f'Size: {size}, Threads: {num_threads} -> INVALID RESULT')
         return None
 
     except Exception as e:
+        print(f"Exception during test: {e}")
         return None
 
 
@@ -87,9 +100,9 @@ def plot_results(sizes, times_dict):
 
 def main():
     matrix_sizes = [200, 400, 800, 1200, 1600, 2000]
+    # matrix_sizes = [200, 400, 800]
     threads_to_test = [1, 2, 4, 8]
-    executable = "matrix_mul_omp.exe"
-
+    executable = "matrix_mul_mpi.exe"
     if not os.path.exists(executable):
         print(f"Error: {executable} not found!")
         return
